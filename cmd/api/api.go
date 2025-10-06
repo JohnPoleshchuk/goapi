@@ -20,14 +20,21 @@ type config struct {
 func (app *application) mount() *chi.Mux {
 	r := chi.NewRouter()
 
+	r.Use(middleware.RealIP)
+	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
-	r.Get("health", app.healthCheckHandler)
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	r.Route("/v2", func(r chi.Router) {
+		r.Get("/health", app.healthCheckHandler)
+	})
 
 	return r
 }
 
-func (app *application) run(mux *http.ServeMux) error {
+func (app *application) run(mux *chi.Mux) error {
 	srv := &http.Server{
 		Addr:         app.config.addr,
 		Handler:      mux,
